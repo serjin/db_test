@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script>
+    // ===== Supabase 설정 =====
+    const SUPABASE_URL = "https://bzupxkmthuqjvcvbcfrq.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_P5MQw_kaPBX3A3xDFZHdDg_AGnYlmh-";
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>마이페이지</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- 로그인한 사용자가 고른 색을 주컬러로 적용 -->
+  <script src="theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<!-- 로그인 여부를 확인하기 전까지는 화면을 숨겨 둔다 -->
+<body hidden>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-mark">P</span>
+        <span>내 포트폴리오</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html">홈</a>
+        <a href="mypage.html" class="is-active">마이페이지</a>
+        <a href="login.html" class="js-logout">로그아웃</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main">
+    <h1 class="page-title">마이페이지</h1>
+
+    <section class="profile-card">
+      <dl class="profile-list">
+        <div class="profile-row">
+          <dt class="profile-label">이름</dt>
+          <dd class="profile-name" id="profile-name"></dd>
+        </div>
+        <div class="profile-row">
+          <dt class="profile-label">이메일</dt>
+          <dd class="profile-meta" id="profile-email"></dd>
+        </div>
+        <div class="profile-row">
+          <dt class="profile-label">생년월일</dt>
+          <dd class="profile-meta" id="profile-birthdate"></dd>
+        </div>
+        <div class="profile-row">
+          <dt class="profile-label">좋아하는 색</dt>
+          <dd class="profile-meta profile-color">
+            <span class="color-swatch" id="profile-color-swatch" hidden></span>
+            <span id="profile-color"></span>
+          </dd>
+        </div>
+        <div class="profile-row">
+          <dt class="profile-label">한줄 소개</dt>
+          <dd class="profile-meta" id="profile-bio"></dd>
+        </div>
+        <div class="profile-row">
+          <dt class="profile-label">가입일</dt>
+          <dd class="profile-meta" id="profile-joined"></dd>
+        </div>
+      </dl>
+    </section>
+
+    <h2 class="section-title">화면 설정</h2>
+    <section class="settings-card">
+      <div class="setting-row">
+        <div>
+          <p class="setting-name">화면 모드</p>
+          <p class="setting-desc">사이트 전체를 밝게 또는 어둡게 보여줘요</p>
+        </div>
+        <div class="segmented" role="radiogroup" aria-label="화면 모드">
+          <label>
+            <input type="radio" name="theme-mode" value="light">
+            <span>라이트</span>
+          </label>
+          <label>
+            <input type="radio" name="theme-mode" value="dark">
+            <span>다크</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div>
+          <p class="setting-name">내 색 적용하기</p>
+          <p class="setting-desc">켜면 내가 고른 색, 끄면 기본 남색으로 보여줘요</p>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="use-custom-color">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="switch-text" id="use-custom-color-text">적용</span>
+        </label>
+      </div>
+
+      <p class="setting-status" id="setting-status"></p>
+    </section>
+
+    <button type="button" class="btn-secondary js-logout">로그아웃</button>
+  </main>
+
+  <script>
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    // 날짜를 "연-월-일" 형식으로
+    function formatDate(isoString) {
+      const d = new Date(isoString);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
+
+    client.auth.getSession().then(({ data }) => {
+      // 로그인 안 되어 있으면 내용을 보여주지 않고 바로 login.html로 이동
+      if (!data.session) {
+        location.replace("login.html");
+        return;
+      }
+
+      const user = data.session.user;
+      const meta = user.user_metadata || {};
+      document.getElementById("profile-name").textContent = meta.name || "이름 없음";
+      document.getElementById("profile-email").textContent = user.email;
+      document.getElementById("profile-birthdate").textContent = meta.birthdate || "입력 안 함";
+      document.getElementById("profile-bio").textContent = meta.bio || "입력 안 함";
+
+      // 색 코드가 올바른 형식(#rrggbb)일 때만 색 견본을 보여준다
+      const color = meta.favorite_color;
+      if (color && /^#[0-9a-fA-F]{6}$/.test(color)) {
+        const swatch = document.getElementById("profile-color-swatch");
+        swatch.style.background = color;
+        swatch.hidden = false;
+        document.getElementById("profile-color").textContent = color.toUpperCase();
+      } else {
+        document.getElementById("profile-color").textContent = "입력 안 함";
+      }
+      document.getElementById("profile-joined").textContent = formatDate(user.created_at);
+
+      initSettings(meta);
+      document.body.hidden = false;
+    });
+
+    // ===== 화면 설정 (라이트/다크 모드, 내 색 적용) =====
+    // 설정은 user metadata에 저장해서 다른 페이지·다른 기기에서도 그대로 적용된다
+    let currentMeta = {};
+    const modeRadios = document.querySelectorAll('input[name="theme-mode"]');
+    const customToggle = document.getElementById("use-custom-color");
+    const customToggleText = document.getElementById("use-custom-color-text");
+    const settingStatus = document.getElementById("setting-status");
+
+    function initSettings(meta) {
+      currentMeta = meta;
+      const mode = meta.theme_mode === "dark" ? "dark" : "light";
+      modeRadios.forEach((r) => (r.checked = r.value === mode));
+      customToggle.checked = meta.use_custom_color !== false;
+      updateToggleText();
+    }
+
+    function updateToggleText() {
+      customToggleText.textContent = customToggle.checked ? "적용" : "해제";
+    }
+
+    async function saveSetting(changes) {
+      const previous = currentMeta;
+      currentMeta = Object.assign({}, currentMeta, changes);
+
+      // 저장을 기다리지 않고 화면에 바로 반영
+      SiteTheme.apply(currentMeta);
+      settingStatus.classList.remove("is-error");
+      settingStatus.textContent = "저장 중...";
+
+      const { error } = await client.auth.updateUser({ data: changes });
+      if (error) {
+        // 저장에 실패하면 화면과 선택 상태를 이전으로 되돌린다
+        currentMeta = previous;
+        SiteTheme.apply(currentMeta);
+        initSettings(currentMeta);
+        settingStatus.classList.add("is-error");
+        settingStatus.textContent = "저장하지 못했어요: " + error.message;
+      } else {
+        settingStatus.textContent = "저장했어요";
+      }
+    }
+
+    modeRadios.forEach((r) => {
+      r.addEventListener("change", () => {
+        if (r.checked) saveSetting({ theme_mode: r.value });
+      });
+    });
+
+    customToggle.addEventListener("change", () => {
+      updateToggleText();
+      saveSetting({ use_custom_color: customToggle.checked });
+    });
+
+    // 메뉴의 "로그아웃" 링크와 화면의 "로그아웃" 버튼
+    document.querySelectorAll(".js-logout").forEach((el) => {
+      el.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await client.auth.signOut();
+        location.href = "login.html";
+      });
+    });
+  </script>
+</body>
+</html>

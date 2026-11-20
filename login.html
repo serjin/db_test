@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script>
+    // ===== Supabase 설정 =====
+    const SUPABASE_URL = "https://bzupxkmthuqjvcvbcfrq.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_P5MQw_kaPBX3A3xDFZHdDg_AGnYlmh-";
+  </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>로그인</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- 로그인한 사용자가 고른 색을 주컬러로 적용 -->
+  <script src="theme.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<!-- 로그인 여부를 확인하기 전까지는 화면을 숨겨 둔다 -->
+<body hidden>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="index.html" class="logo">
+        <span class="logo-mark">P</span>
+        <span>내 포트폴리오</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="auth-main">
+    <div class="card">
+      <h1 id="title">로그인</h1>
+
+      <form id="auth-form">
+        <div class="field" id="name-field" hidden>
+          <label for="name">이름</label>
+          <input type="text" id="name" placeholder="홍길동">
+        </div>
+        <div class="field">
+          <label for="email">이메일</label>
+          <input type="email" id="email" placeholder="you@example.com" required>
+        </div>
+        <div class="field" id="password-field">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" placeholder="비밀번호" required>
+        </div>
+        <p class="forgot" id="forgot-wrap">
+          <a href="#" id="forgot-link">비밀번호를 잊으셨나요?</a>
+        </p>
+        <div class="field" id="birthdate-field" hidden>
+          <label for="birthdate">생년월일</label>
+          <input type="date" id="birthdate">
+        </div>
+        <div class="field" id="color-field" hidden>
+          <label for="favorite-color">좋아하는 색</label>
+          <input type="color" id="favorite-color" value="#1e2a5a">
+        </div>
+        <div class="field" id="bio-field" hidden>
+          <label for="bio">한줄 소개 <span class="optional">(선택)</span></label>
+          <input type="text" id="bio" maxlength="40" placeholder="40자 이내로 자신을 소개해주세요">
+        </div>
+        <button type="submit" id="submit-btn" class="btn-primary">로그인</button>
+      </form>
+
+      <p id="result" class="result"></p>
+
+      <p class="toggle">
+        <span id="toggle-text">계정이 없나요?</span>
+        <a href="#" id="toggle-link">회원가입</a>
+      </p>
+    </div>
+  </main>
+
+  <script>
+    const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    // 이미 로그인되어 있으면 화면을 보여주지 않고 바로 index.html로 이동
+    client.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        location.replace("index.html");
+      } else {
+        document.body.hidden = false;
+      }
+    });
+
+    const title = document.getElementById("title");
+    const form = document.getElementById("auth-form");
+    const submitBtn = document.getElementById("submit-btn");
+    const result = document.getElementById("result");
+    const toggleText = document.getElementById("toggle-text");
+    const toggleLink = document.getElementById("toggle-link");
+    const nameField = document.getElementById("name-field");
+    const colorField = document.getElementById("color-field");
+    const bioField = document.getElementById("bio-field");
+    const birthdateField = document.getElementById("birthdate-field");
+
+    // 생년월일은 오늘 이후 날짜를 고를 수 없게 한다
+    document.getElementById("birthdate").max = new Date().toLocaleDateString("sv-SE");
+
+    const passwordField = document.getElementById("password-field");
+    const passwordInput = document.getElementById("password");
+    const forgotWrap = document.getElementById("forgot-wrap");
+
+    // "login", "signup", "reset"(비밀번호 재설정) 중 하나
+    let mode = "login";
+
+    function render() {
+      const isSignup = mode === "signup";
+      const isReset = mode === "reset";
+
+      if (mode === "login") {
+        title.textContent = "로그인";
+        submitBtn.textContent = "로그인";
+        toggleText.textContent = "계정이 없나요?";
+        toggleLink.textContent = "회원가입";
+      } else if (isSignup) {
+        title.textContent = "회원가입";
+        submitBtn.textContent = "회원가입";
+        toggleText.textContent = "이미 계정이 있나요?";
+        toggleLink.textContent = "로그인";
+      } else {
+        title.textContent = "비밀번호 재설정";
+        submitBtn.textContent = "재설정 링크 보내기";
+        toggleText.textContent = "";
+        toggleLink.textContent = "로그인으로 돌아가기";
+      }
+      document.title = title.textContent;
+
+      // 회원가입 전용 칸
+      nameField.hidden = !isSignup;
+      birthdateField.hidden = !isSignup;
+      colorField.hidden = !isSignup;
+      bioField.hidden = !isSignup;
+
+      // 비밀번호 재설정 화면에서는 비밀번호 칸을 숨기고 필수도 해제
+      passwordField.hidden = isReset;
+      passwordInput.required = !isReset;
+
+      // "비밀번호를 잊으셨나요?"는 로그인 화면에서만
+      forgotWrap.hidden = mode !== "login";
+
+      result.textContent = "";
+      result.classList.remove("is-success");
+    }
+
+    toggleLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      mode = mode === "login" ? "signup" : "login";
+      render();
+    });
+
+    document.getElementById("forgot-link").addEventListener("click", (e) => {
+      e.preventDefault();
+      mode = "reset";
+      render();
+    });
+
+    // Supabase 오류를 한국어 메시지로 바꾼다
+    function toKoreanError(error) {
+      if (error.code === "user_already_exists" || error.message === "User already registered") {
+        return "이미 가입된 이메일이에요";
+      }
+      if (error.code === "invalid_credentials" || error.message === "Invalid login credentials") {
+        return "이메일이나 비밀번호가 맞지 않아요";
+      }
+      return "실패했어요: " + error.message;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      result.classList.remove("is-success");
+
+      if (mode === "reset") {
+        result.textContent = "보내는 중...";
+        const { error } = await client.auth.resetPasswordForEmail(email, {
+          // 메일의 링크를 누르면 돌아올 주소
+          redirectTo: new URL("new-password.html", location.href).href
+        });
+        if (error) {
+          result.textContent = toKoreanError(error);
+        } else {
+          result.textContent = "이메일을 확인해주세요";
+          result.classList.add("is-success");
+        }
+      } else if (mode === "login") {
+        result.textContent = "로그인 중...";
+        const { error } = await client.auth.signInWithPassword({ email, password });
+        if (error) {
+          result.textContent = toKoreanError(error);
+        } else {
+          location.href = "index.html";
+        }
+      } else {
+        const name = document.getElementById("name").value.trim();
+        if (!name) {
+          result.textContent = "이름을 입력해주세요";
+          return;
+        }
+        if (!document.getElementById("birthdate").value) {
+          result.textContent = "생년월일을 입력해주세요";
+          return;
+        }
+        result.textContent = "가입 중...";
+        const { data, error } = await client.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name,
+              // "YYYY-MM-DD" 형식 (필수)
+              birthdate: document.getElementById("birthdate").value,
+              favorite_color: document.getElementById("favorite-color").value,
+              // 선택 항목: 비워두면 빈 문자열로 저장
+              bio: document.getElementById("bio").value.trim()
+            }
+          }
+        });
+        if (error) {
+          result.textContent = toKoreanError(error);
+        } else if (data.user && data.user.identities && data.user.identities.length === 0) {
+          // 이메일 인증이 켜져 있으면 Supabase는 중복 가입에 오류 대신
+          // identities가 빈 사용자 정보를 돌려준다
+          result.textContent = "이미 가입된 이메일이에요";
+        } else {
+          location.href = "index.html";
+        }
+      }
+    });
+  </script>
+</body>
+</html>
